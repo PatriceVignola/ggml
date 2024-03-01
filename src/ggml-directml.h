@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ggml.h"
+#include "ggml-backend.h"
 
 #ifdef  __cplusplus
 extern "C" {
@@ -14,6 +15,8 @@ struct ggml_directml_device {
 };
 
 GGML_API void ggml_init_directml(void);
+
+GGML_API ggml_backend_t ggml_backend_directml_init(int device);
 
 #ifdef  __cplusplus
 }

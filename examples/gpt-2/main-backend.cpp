@@ -10,6 +10,10 @@
 #include "ggml-metal.h"
 #endif
 
+#ifdef GGML_USE_DIRECTML
+#include "ggml-directml.h"
+#endif
+
 #include "common.h"
 #include "common-ggml.h"
 
@@ -212,6 +216,16 @@ bool gpt2_model_load(const std::string & fname, gpt2_model & model, gpt_vocab & 
         fprintf(stderr, "%s: using Metal backend\n", __func__);
         ggml_backend_metal_log_set_callback(ggml_log_callback_default, nullptr);
         model.backend = ggml_backend_metal_init();
+        if (!model.backend) {
+            fprintf(stderr, "%s: ggml_backend_metal_init() failed\n", __func__);
+        }
+    }
+#endif
+
+#ifdef GGML_USE_DIRECTML
+    if (n_gpu_layers > 0) {
+        fprintf(stderr, "%s: using DirectML backend\n", __func__);
+        model.backend = ggml_backend_directml_init(0);
         if (!model.backend) {
             fprintf(stderr, "%s: ggml_backend_metal_init() failed\n", __func__);
         }

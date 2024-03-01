@@ -364,10 +364,72 @@ if (GGML_DIRECTML)
 
     add_dependencies(RESTORE_PACKAGES nuget)
 
-    set(GGML_DIRECTML_SOURCES ggml-directml.cpp ggml-directml.h)
-    set(GGML_EXTRA_INCS ${GGML_EXTRA_INCS} "${DML_PACKAGE_DIR}/include")
+    # Fetch WIL and DirectX-Headers
+    set(WIL_BUILD_PACKAGING OFF CACHE BOOL "" FORCE)
+    set(WIL_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
+    include(FetchContent)
+    FetchContent_Declare(
+        microsoft_wil
+        URL https://github.com/microsoft/wil/archive/refs/tags/v1.0.230629.1.zip
+        URL_HASH SHA1=e4a542a323c070376f7c2d1973d0f7ddbc1d2fa5
+        FIND_PACKAGE_ARGS NAMES wil
+    )
+
+    FetchContent_Declare(
+        directmlx
+        URL https://raw.githubusercontent.com/microsoft/DirectML/99daf0f6022e059d8a7197eacc626a102f0f60da/Libraries/DirectMLX.h
+        DOWNLOAD_NO_EXTRACT 1
+    )
+
+    FetchContent_Declare(
+        directx_headers
+        GIT_REPOSITORY https://github.com/microsoft/DirectX-Headers
+        GIT_TAG d49ae12ab350b20468a9667bad700f3227cd3f7a
+    )
+
+    FetchContent_MakeAvailable(microsoft_wil directx_headers directmlx)
+
+    set(GGML_DIRECTML_SOURCES
+        ggml-directml.cpp
+        ggml-directml.h
+        dml_optional_extensions.h
+        directml/dml-allocation-info.cpp
+        directml/dml-allocation-info.h
+        directml/dml-allocator-rounding-mode.h
+        directml/dml-buffer-region.cpp
+        directml/dml-buffer-region.h
+        directml/dml-buffer.cpp
+        directml/dml-buffer.h
+        directml/dml-command-queue.cpp
+        directml/dml-command-queue.h
+        directml/dml-command-recorder.cpp
+        directml/dml-command-recorder.h
+        directml/dml-descriptor-pool.cpp
+        directml/dml-descriptor-pool.h
+        directml/dml-execution-context.cpp
+        directml/dml-execution-context.h
+        directml/dml-gpu-allocator.cpp
+        directml/dml-gpu-allocator.h
+        directml/dml-gpu-event.h
+        directml/dml-heap-allocation.h
+        directml/dml-managed-buffer.h
+        directml/dml-pooled-upload-heap.cpp
+        directml/dml-pooled-upload-heap.h
+        directml/dml-readback-heap.cpp
+        directml/dml-readback-heap.h
+        directml/dml-reserved-resource-allocator-wrapper.h
+        directml/dml-reserved-resource-sub-allocator.cpp
+        directml/dml-reserved-resource-sub-allocator.h
+        directml/dml-reserved-resource-wrapper.h
+        directml/dml-resource-wrapper.h
+        directml/dml-sub-allocator.h
+        directml/dml-tagged-pointer.cpp
+        directml/dml-tagged-pointer.h
+    )
+    set(GGML_EXTRA_INCS ${GGML_EXTRA_INCS} "${DML_PACKAGE_DIR}/include" "${directx_headers_SOURCE_DIR}/include/directx" "${directmlx_SOURCE_DIR}")
     set(GGML_EXTRA_FLAGS ${GGML_EXTRA_FLAGS} -DGGML_USE_DIRECTML)
-    set(GGML_EXTRA_LIBS ${GGML_EXTRA_LIBS} ${DML_PACKAGE_DIR}/bin/x64-win/DirectML.lib)
+    set(GGML_EXTRA_LIBS ${GGML_EXTRA_LIBS} ${DML_PACKAGE_DIR}/bin/x64-win/DirectML.lib WIL::WIL dxcore.lib dxguid.lib d3d12.lib dxgi.lib)
 endif()
 
 if (GGML_PERF)
