@@ -320,6 +320,56 @@ if (GGML_METAL)
         )
 endif()
 
+if (GGML_DIRECTML)
+    message("-- Using DirectML")
+
+    set(DML_SHARED_LIB DirectML.dll)
+
+    if (NOT(MSVC) OR NOT(WIN32))
+        message(FATAL_ERROR "NuGet packages are only supported for MSVC on Windows.")
+    endif()
+
+    # Retrieve the latest version of nuget
+    include(ExternalProject)
+    ExternalProject_Add(nuget
+        PREFIX nuget
+        URL "https://dist.nuget.org/win-x86-commandline/v5.3.0/nuget.exe"
+        DOWNLOAD_NO_EXTRACT 1
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        UPDATE_COMMAND ""
+        INSTALL_COMMAND "")
+
+    set(NUGET_CONFIG ${PROJECT_SOURCE_DIR}/nuget.config)
+    set(PACKAGES_CONFIG ${PROJECT_SOURCE_DIR}/packages.config)
+    get_filename_component(PACKAGES_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages ABSOLUTE)
+    set(DML_PACKAGE_DIR ${PACKAGES_DIR}/Microsoft.AI.DirectML.1.13.1)
+
+    # Restore nuget packages, which will pull down the DirectML redist package.
+    add_custom_command(
+        OUTPUT
+        ${DML_PACKAGE_DIR}/bin/x64-win/DirectML.lib
+        DEPENDS
+        ${PACKAGES_CONFIG}
+        ${NUGET_CONFIG}
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/nuget/src/nuget restore ${PACKAGES_CONFIG} -PackagesDirectory ${PACKAGES_DIR} -ConfigFile ${NUGET_CONFIG}
+        VERBATIM
+    )
+
+    add_custom_target(
+        RESTORE_PACKAGES ALL
+        DEPENDS
+        ${DML_PACKAGE_DIR}/bin/x64-win/DirectML.lib
+    )
+
+    add_dependencies(RESTORE_PACKAGES nuget)
+
+    set(GGML_DIRECTML_SOURCES ggml-directml.cpp ggml-directml.h)
+    set(GGML_EXTRA_INCS ${GGML_EXTRA_INCS} "${DML_PACKAGE_DIR}/include")
+    set(GGML_EXTRA_FLAGS ${GGML_EXTRA_FLAGS} -DGGML_USE_DIRECTML)
+    set(GGML_EXTRA_LIBS ${GGML_EXTRA_LIBS} ${DML_PACKAGE_DIR}/bin/x64-win/DirectML.lib)
+endif()
+
 if (GGML_PERF)
     set(GGML_EXTRA_FLAGS ${GGML_EXTRA_FLAGS} -DGGML_PERF)
 endif()
@@ -337,7 +387,14 @@ add_library(${TARGET}
     ${GGML_CUDA_SOURCES}
     ${GGML_OPENCL_SOURCES}
     ${GGML_METAL_SOURCES}
+    ${GGML_DIRECTML_SOURCES}
     )
+
+if (GGML_DIRECTML)
+    add_dependencies(${TARGET} RESTORE_PACKAGES)
+    target_link_libraries(${TARGET} PRIVATE "${DML_PACKAGE_DIR}/bin/x64-win/DirectML.lib")
+    target_compile_definitions(${TARGET} PRIVATE DML_TARGET_VERSION_USE_LATEST)
+endif()
 
 target_include_directories(${TARGET} PUBLIC
     .

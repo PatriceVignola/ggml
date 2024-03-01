@@ -290,6 +290,8 @@ inline static void * ggml_calloc(size_t num, size_t size) {
 #include "ggml-vulkan.h"
 #elif defined(GGML_USE_SYCL)
 #include "ggml-sycl.h"
+#elif defined(GGML_USE_DIRECTML)
+#include "ggml-directml.h"
 #endif
 
 // floating point type used to accumulate sums
@@ -2518,6 +2520,8 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
         ggml_vk_init_cpu_assist();
 #elif defined(GGML_USE_SYCL)
         ggml_init_sycl();
+#elif defined(GGML_USE_DIRECTML)
+        ggml_init_directml();
 #endif
 
         ggml_setup_op_has_task_pass();
